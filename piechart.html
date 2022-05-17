@@ -1,0 +1,91 @@
+<html>
+
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script type="text/javascript">
+        var requestHeaders = {
+            Accept: 'q=0.8;application/json;q=0.9',
+            "Content-Type": "application/json"
+        };
+        InitializeCSRFToken();
+        function InitializeCSRFToken() {
+            var documentcookies = document.cookie.split('; ');
+            var result = {};
+            for (var i = 0; i < documentcookies.length; i++) {
+                var cur = documentcookies[i].split('=');
+                result[cur[0]] = cur[1];
+            }
+            if (result["SCOM-CSRF-TOKEN"] && result["SCOM-CSRF-TOKEN"] != null) {
+                requestHeaders["SCOM-CSRF-TOKEN"] = decodeURIComponent(result["SCOM-CSRF-TOKEN"]);
+            }
+        }
+        
+        var criticalCounter = 0;
+        var informationCounter = 0;
+        var warningCounter = 0;
+
+        window.onload = function () {
+            $.ajax({
+                url: "/OperationsManager/data/alert",
+                type: "POST",
+                headers: requestHeaders,
+                data: JSON.stringify({
+                    "classId": null,
+                    "criteria": "((Severity = '0') OR (Severity = '1') OR (Severity = '2') OR (Severity = '3')) AND ((Priority = '2') OR (Priority = '1') OR (Priority = '0')) AND ((ResolutionState = '0') OR (ResolutionState = '247') OR (ResolutionState = '248') OR (ResolutionState = '249') OR (ResolutionState = '250') OR (ResolutionState = '254') OR (ResolutionState = '255'))",
+                    "displayColumns":
+                        [
+                            "severity", "monitoringobjectdisplayname", "name", "age", "repeatcount", "lastModified"
+                        ]
+                }),
+                success: function (result) {
+                    for (var i = 0; i < result.rows.length; i++) {
+                        switch (result.rows[i].severity) {
+                            case "Error":
+                                criticalCounter++;
+                                break;
+                            case "Information":
+                                informationCounter++;
+                                break;
+                            case "Warning":
+                                warningCounter++
+                                break;
+                        }
+                    }
+                    renderChart();
+                }
+            });
+        }
+
+        function renderChart() {
+            var chart = new CanvasJS.Chart("chartContainer",
+                {
+                    theme: "theme2",
+                    title: {
+                        text: "Alerts representation in Pie chart"
+                    },
+                    data: [
+                        {
+                            type: "pie",
+                            showInLegend: true,
+                            toolTipContent: "{y} - #percent %",
+                            legendText: "{indexLabel}",
+                            dataPoints: [
+                                { y: criticalCounter, indexLabel: "Critical" },
+                                { y: warningCounter, indexLabel: "Warning" },
+                                { y: informationCounter, indexLabel: "Information" }
+                            ]
+                        }
+                    ]
+                });
+            chart.render();
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js"></script>
+    <title>CanvasJS Example</title>
+</head>
+
+<body>
+    <div id="chartContainer" style="height: 400px; width: 100%;"></div>
+</body>
+
+</html>
